@@ -13,13 +13,14 @@
           @click="location = { lng: -71.224518, lat: 42.213995, zoom: 9, pitch: 0, bearing: 0 }"> Reset
       </button>
     </div>
-    <Map v-model=location @update="updateLocation"></Map>
+    <Map v-model=location @update="updateLocation"/>
   </div>
 </template>
 
 <script setup lang="ts">
 import Map from './components/Map.vue';
 import '../node_modules/mapbox-gl/dist/mapbox-gl.css';
+import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import {ref} from "vue";
 
 // Props
@@ -32,11 +33,11 @@ interface MapProps {
 }
 
 const location = ref<MapProps>({
-  lng: -71.224518,
-  lat: 42.213995,
-  bearing: 0,
-  pitch: 0,
-  zoom: 9
+  lng: -123.057857,
+  lat: 49.246682,
+  bearing: -17.6,
+  zoom: 18,
+  pitch: 45,
 })
 
 const updateLocation = (value: MapProps) => location.value = value;
