@@ -7,7 +7,7 @@ import {ref, watch, onMounted, onUnmounted} from 'vue';
 import mapboxgl from 'mapbox-gl';
 
 // Access token for Mapbox
-mapboxgl.accessToken = 'pk.eyJ1IjoidHRwc3M5MzAxNDEwMTEiLCJhIjoiY20xY2V3M2g2MXo0cjJqb2llOHppaXAxcSJ9.ljabVuKNIQDeAWt3l1LXmg';
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string;
 
 // Props
 interface MapProps {
