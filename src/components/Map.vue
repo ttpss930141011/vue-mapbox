@@ -11,18 +11,17 @@ import {MapProps} from "../types";
 // Access token for Mapbox
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string;
 
-
 const props = defineProps<{ modelValue: MapProps }>();
 const emit = defineEmits<{
   update: (value: MapProps) => void;
-}>()
+}>();
 
 // References and reactive variables
 const mapContainer = ref<HTMLDivElement | null>(null);
 const map = ref<mapboxgl.Map | null>(null);
 const geoCoder = ref<mapboxgl.Geocoder | null>(null);
-const fHover = ref(null);
 const hoverBuildingId = ref(null);
+const popup = ref<mapboxgl.Popup | null>(null);
 
 // Function to get the current map location
 const getLocation = () => {
@@ -39,7 +38,6 @@ const getLocation = () => {
   return {...props.modelValue};
 };
 const updateLocation = () => emit('update', getLocation());
-
 
 // Watcher to handle prop changes to emit the update event
 watch(
@@ -73,6 +71,10 @@ watch(hoverBuildingId, (newId, oldId) => {
         {source: 'composite', sourceLayer: 'building', id: oldId},
         {hover: false}
     );
+    if (popup.value) {
+      popup.value.remove();
+      popup.value = null;
+    }
   }
   if (newId !== null) {
     // set the new hover building state
@@ -103,16 +105,15 @@ onMounted(() => {
   map.value.on('rotate', updateLocation);
   map.value.on('pitch', updateLocation);
 
-
   geoCoder.value = new MapboxGeocoder({
     // Initialize the geocoder
     accessToken: mapboxgl.accessToken, // Set the access token
     mapboxgl: mapboxgl, // Set the mapbox-gl instance
   });
 
-// Add the geocoder to the map
+  // Add the geocoder to the map
   map.value.addControl(geoCoder.value);
-// Add geolocate control to the map.
+  // Add geolocate control to the map.
   map.value.addControl(
       new mapboxgl.GeolocateControl({
         positionOptions: {
@@ -156,18 +157,34 @@ onMounted(() => {
         'fill-extrusion-opacity': 1
       }
     }, labelLayerId);
+
     map.value.on('click', function (e) {
       var features = map.value.queryRenderedFeatures(e.point, {
         layers: ['3d-buildings']
       });
-      console.log(features[0].id);
-    })
+      console.log(features[0]?.id);
+    });
+
     map.value.on('mousemove', function (e) {
       var features = map.value.queryRenderedFeatures(e.point, {
         layers: ['3d-buildings']
       });
       if (features[0]) {
         hoverBuildingId.value = features[0].id;
+
+        // Create a popup if it doesn't exist
+        if (!popup.value) {
+          popup.value = new mapboxgl.Popup({
+            closeButton: false,
+            closeOnClick: false
+          });
+        }
+
+        // Set the popup content and location
+        popup.value
+            .setLngLat(e.lngLat)
+            .setHTML(`<strong>Building ID:</strong> ${features[0].id}`)
+            .addTo(map.value);
       } else {
         hoverBuildingId.value = null;
       }
@@ -182,6 +199,7 @@ onUnmounted(() => {
     map.value = null;
   }
 });
+
 </script>
 
 <style>
