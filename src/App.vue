@@ -7,11 +7,8 @@
         Bearing: {{ location.bearing.toFixed(2) }} |
       </template>
       <template v-if="location.pitch">
-        Pitch: {{ location.pitch.toFixed(2) }} |
+        Pitch: {{ location.pitch.toFixed(2) }}
       </template>
-      <button
-          @click="location = { lng: -71.224518, lat: 42.213995, zoom: 9, pitch: 0, bearing: 0 }"> Reset
-      </button>
     </div>
     <Map v-model=location @update="updateLocation"/>
   </div>
