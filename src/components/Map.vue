@@ -68,6 +68,7 @@ watch(
 watch(hoverBuildingId, (newId, oldId) => {
   if (oldId !== null) {
     // clean up the old hover building state
+    map.value.getCanvas().style.cursor = 'default';
     map.value.setFeatureState(
         {source: 'composite', sourceLayer: 'building', id: oldId},
         {hover: false}
@@ -75,6 +76,7 @@ watch(hoverBuildingId, (newId, oldId) => {
   }
   if (newId !== null) {
     // set the new hover building state
+    map.value.getCanvas().style.cursor = 'pointer';
     map.value.setFeatureState(
         {source: 'composite', sourceLayer: 'building', id: newId},
         {hover: true}
