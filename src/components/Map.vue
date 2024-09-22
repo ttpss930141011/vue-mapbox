@@ -21,6 +21,8 @@ const emit = defineEmits<{
 const mapContainer = ref<HTMLDivElement | null>(null);
 const map = ref<mapboxgl.Map | null>(null);
 const geoCoder = ref<mapboxgl.Geocoder | null>(null);
+const fHover = ref(null);
+const hoverBuildingId = ref(null);
 
 // Function to get the current map location
 const getLocation = () => {
@@ -39,29 +41,46 @@ const getLocation = () => {
 const updateLocation = () => emit('update', getLocation());
 
 
-// Watcher to handle prop changes
+// Watcher to handle prop changes to emit the update event
 watch(
     () => props.modelValue,
-    (next) => {
+    (value) => {
       if (map.value) {
         const curr = getLocation();
 
-        if (curr.lng !== next.lng || curr.lat !== next.lat) {
-          map.value.setCenter([next.lng, next.lat]);
+        if (curr.lng !== value.lng || curr.lat !== value.lat) {
+          map.value.setCenter([value.lng, value.lat]);
         }
-        if (curr.pitch !== next.pitch) {
-          map.value.setPitch(next.pitch);
+        if (curr.pitch !== value.pitch) {
+          map.value.setPitch(value.pitch);
         }
-        if (curr.bearing !== next.bearing) {
-          map.value.setBearing(next.bearing);
+        if (curr.bearing !== value.bearing) {
+          map.value.setBearing(value.bearing);
         }
-        if (curr.zoom !== next.zoom) {
-          map.value.setZoom(next.zoom);
+        if (curr.zoom !== value.zoom) {
+          map.value.setZoom(value.zoom);
         }
       }
     }
 );
 
+// Watcher to handle hover building state to paint or dis-paint the building
+watch(hoverBuildingId, (newId, oldId) => {
+  if (oldId !== null) {
+    // clean up the old hover building state
+    map.value.setFeatureState(
+        {source: 'composite', sourceLayer: 'building', id: oldId},
+        {hover: false}
+    );
+  }
+  if (newId !== null) {
+    // set the new hover building state
+    map.value.setFeatureState(
+        {source: 'composite', sourceLayer: 'building', id: newId},
+        {hover: true}
+    );
+  }
+});
 
 // Lifecycle hook: mounted
 onMounted(() => {
@@ -87,7 +106,6 @@ onMounted(() => {
     // Initialize the geocoder
     accessToken: mapboxgl.accessToken, // Set the access token
     mapboxgl: mapboxgl, // Set the mapbox-gl instance
-    marker: false // Do not use the default marker style
   });
 
 // Add the geocoder to the map
@@ -100,7 +118,7 @@ onMounted(() => {
         },
         // When active the map will receive updates to the device's location as it changes.
         trackUserLocation: true,
-        // Draw an arrow next to the location dot to indicate which direction the device is heading.
+        // Draw an arrow value to the location dot to indicate which direction the device is heading.
         showUserHeading: true,
         fitBoundsOptions: {
           zoom: 16
@@ -118,43 +136,40 @@ onMounted(() => {
     // The 'building' layer in the Mapbox Streets
     // vector tileset contains building height data
     // from OpenStreetMap.
-    map.value.addLayer(
-        {
-          'id': 'add-3d-buildings',
-          'source': 'composite',
-          'source-layer': 'building',
-          'filter': ['==', 'extrude', 'true'],
-          'type': 'fill-extrusion',
-          'minzoom': 15,
-          'paint': {
-            'fill-extrusion-color': '#aaa',
-
-            // Use an 'interpolate' expression to
-            // add a smooth transition effect to
-            // the buildings as the user zooms in.
-            'fill-extrusion-height': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              15,
-              0,
-              15.05,
-              ['get', 'height']
-            ],
-            'fill-extrusion-base': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              15,
-              0,
-              15.05,
-              ['get', 'min_height']
-            ],
-            'fill-extrusion-opacity': 0.6
-          }
-        },
-        labelLayerId
-    );
+    map.value.addLayer({
+      'id': '3d-buildings',
+      'source': 'composite',
+      'source-layer': 'building',
+      'type': 'fill-extrusion',
+      'minzoom': 14,
+      'paint': {
+        'fill-extrusion-color': [
+          'case',
+          ['boolean', ['feature-state', 'hover'], false],
+          '#ff0000',
+          '#ddd'
+        ],
+        'fill-extrusion-height': ["number", ["get", "height"], 5],
+        'fill-extrusion-base': ["number", ["get", "min_height"], 0],
+        'fill-extrusion-opacity': 1
+      }
+    }, labelLayerId);
+    map.value.on('click', function (e) {
+      var features = map.value.queryRenderedFeatures(e.point, {
+        layers: ['3d-buildings']
+      });
+      console.log(features[0].id);
+    })
+    map.value.on('mousemove', function (e) {
+      var features = map.value.queryRenderedFeatures(e.point, {
+        layers: ['3d-buildings']
+      });
+      if (features[0]) {
+        hoverBuildingId.value = features[0].id;
+      } else {
+        hoverBuildingId.value = null;
+      }
+    });
   });
 });
 

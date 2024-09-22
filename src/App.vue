@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import Map from './components/Map.vue';
+import Map from './components/Map-2.vue';
 import '../node_modules/mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import {ref} from "vue";
