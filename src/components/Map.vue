@@ -1,5 +1,6 @@
 <template>
   <div ref="mapContainer" class="map-container"></div>
+  <InfoPanel :building="selectedBuilding" :timelineEvents="timelineEvents"/>
 </template>
 
 <script setup lang="ts">
@@ -7,6 +8,8 @@ import {onMounted, onUnmounted, ref, watch} from 'vue';
 import mapboxgl from 'mapbox-gl';
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
 import {MapProps} from "../types";
+import InfoPanel from './InfoPanel.vue';
+import {generateRandomBuildingData, generateRandomTimelineEvents} from "../utils";
 
 // Access token for Mapbox
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string;
@@ -22,6 +25,7 @@ const map = ref<mapboxgl.Map | null>(null);
 const geoCoder = ref<mapboxgl.Geocoder | null>(null);
 const hoverBuildingId = ref(null);
 const popup = ref<mapboxgl.Popup | null>(null);
+const selectedBuilding = ref<any>(null);
 
 // Function to get the current map location
 const getLocation = () => {
@@ -38,6 +42,7 @@ const getLocation = () => {
   return {...props.modelValue};
 };
 const updateLocation = () => emit('update', getLocation());
+const timelineEvents = ref(generateRandomTimelineEvents());
 
 // Watcher to handle prop changes to emit the update event
 watch(
@@ -92,8 +97,8 @@ onMounted(() => {
 
   map.value = new mapboxgl.Map({
     container: mapContainer.value as HTMLElement,
-    // style: 'mapbox://styles/mapbox/streets-v12',
-    style: 'mapbox://styles/mapbox/light-v11',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    // style: 'mapbox://styles/mapbox/light-v11',
     center: [lng, lat],
     bearing,
     pitch,
@@ -162,7 +167,15 @@ onMounted(() => {
       var features = map.value.queryRenderedFeatures(e.point, {
         layers: ['3d-buildings']
       });
-      console.log(features[0]?.id);
+      if (features[0]) {
+        const randomBuildingData = generateRandomBuildingData();
+        selectedBuilding.value = {
+          id: features[0].id,
+          name: features[0].properties.name || 'Unknown',
+          ...randomBuildingData
+        };
+        timelineEvents.value = generateRandomTimelineEvents();
+      }
     });
 
     map.value.on('mousemove', function (e) {
