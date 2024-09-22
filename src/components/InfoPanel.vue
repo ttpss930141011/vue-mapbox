@@ -1,7 +1,7 @@
 <template>
   <el-card class="info-panel" shadow="hover" v-if="building">
     <h3>Building Details</h3>
-    <el-descriptions column="1" border>
+    <el-descriptions :column=1 border>
       <el-descriptions-item label="ID">{{ building.id }}</el-descriptions-item>
       <el-descriptions-item label="Name">{{ building.name || 'N/A' }}</el-descriptions-item>
       <el-descriptions-item label="Type">{{ building.type }}</el-descriptions-item>
@@ -20,24 +20,15 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue';
-
-interface Building {
-  id: string;
-  name?: string;
-  type: string;
-  yearBuilt: number;
-  area: number;
-  marketPrice: number;
-  rent: number;
-}
+import {defineProps} from 'vue';
+import {Building} from "../types";
 
 interface TimelineEvent {
   date: string;
   content: string;
 }
 
-const props = defineProps<{
+defineProps<{
   building: Building | null;
   timelineEvents: TimelineEvent[];
 }>();

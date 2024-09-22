@@ -5,9 +5,9 @@
 
 <script setup lang="ts">
 import {onMounted, onUnmounted, ref, watch} from 'vue';
-import mapboxgl from 'mapbox-gl';
+import mapboxgl, {Map, Popup} from 'mapbox-gl';
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
-import {MapProps} from "../types";
+import {Building, MapProps} from "../types";
 import InfoPanel from './InfoPanel.vue';
 import {generateRandomBuildingData, generateRandomTimelineEvents} from "../utils";
 
@@ -15,17 +15,15 @@ import {generateRandomBuildingData, generateRandomTimelineEvents} from "../utils
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string;
 
 const props = defineProps<{ modelValue: MapProps }>();
-const emit = defineEmits<{
-  update: (value: MapProps) => void;
-}>();
+const emit = defineEmits<{ update: [MapProps]; }>();
 
 // References and reactive variables
 const mapContainer = ref<HTMLDivElement | null>(null);
-const map = ref<mapboxgl.Map | null>(null);
-const geoCoder = ref<mapboxgl.Geocoder | null>(null);
-const hoverBuildingId = ref(null);
-const popup = ref<mapboxgl.Popup | null>(null);
-const selectedBuilding = ref<any>(null);
+const map = ref<Map | null>(null);
+const geoCoder = ref<MapboxGeocoder | null>(null);
+const hoverBuildingId = ref<number | null>(null);
+const popup = ref<Popup | null>(null);
+const selectedBuilding = ref<Building | null>(null);
 
 // Function to get the current map location
 const getLocation = () => {
@@ -41,7 +39,10 @@ const getLocation = () => {
   }
   return {...props.modelValue};
 };
-const updateLocation = () => emit('update', getLocation());
+const updateLocation = () => {
+  const location = getLocation();
+  emit('update', location as MapProps);  // Type assertion as a quick fix
+};
 const timelineEvents = ref(generateRandomTimelineEvents());
 
 // Watcher to handle prop changes to emit the update event
@@ -69,7 +70,7 @@ watch(
 
 // Watcher to handle hover building state to paint or dis-paint the building
 watch(hoverBuildingId, (newId, oldId) => {
-  if (oldId !== null) {
+  if (oldId !== null && map.value) {
     // clean up the old hover building state
     map.value.getCanvas().style.cursor = 'default';
     map.value.setFeatureState(
@@ -81,7 +82,7 @@ watch(hoverBuildingId, (newId, oldId) => {
       popup.value = null;
     }
   }
-  if (newId !== null) {
+  if (newId !== null && map.value) {
     // set the new hover building state
     map.value.getCanvas().style.cursor = 'pointer';
     map.value.setFeatureState(
@@ -104,7 +105,7 @@ onMounted(() => {
     pitch,
     zoom,
   });
-
+  // @ts-ignore
   map.value.on('move', updateLocation);
   map.value.on('zoom', updateLocation);
   map.value.on('rotate', updateLocation);
@@ -113,6 +114,7 @@ onMounted(() => {
   geoCoder.value = new MapboxGeocoder({
     // Initialize the geocoder
     accessToken: mapboxgl.accessToken, // Set the access token
+    // @ts-ignore
     mapboxgl: mapboxgl, // Set the mapbox-gl instance
   });
 
@@ -134,17 +136,19 @@ onMounted(() => {
       })
   );
 
-  map.value.on('style.load', () => {
+  map.value?.on('style.load', () => {
     // Insert the layer beneath any symbol layer.
-    const layers = map.value.getStyle().layers;
-    const labelLayerId = layers.find(
+    const layers = map.value?.getStyle()?.layers as mapboxgl.Layer[];
+    // @ts-ignore
+    const labelLayerId = layers?.find(
+        // @ts-ignore
         (layer) => layer.type === 'symbol' && layer.layout['text-field']
     ).id;
 
     // The 'building' layer in the Mapbox Streets
     // vector tileset contains building height data
     // from OpenStreetMap.
-    map.value.addLayer({
+    map.value?.addLayer({
       'id': '3d-buildings',
       'source': 'composite',
       'source-layer': 'building',
@@ -163,27 +167,27 @@ onMounted(() => {
       }
     }, labelLayerId);
 
-    map.value.on('click', function (e) {
-      var features = map.value.queryRenderedFeatures(e.point, {
+    map.value?.on('click', function (e) {
+      const features = map.value?.queryRenderedFeatures(e.point, {
         layers: ['3d-buildings']
       });
-      if (features[0]) {
+      if (features?.length) {
         const randomBuildingData = generateRandomBuildingData();
         selectedBuilding.value = {
-          id: features[0].id,
-          name: features[0].properties.name || 'Unknown',
+          id: features[0].id?.toString() || "0",
+          name: 'Unknown',
           ...randomBuildingData
         };
         timelineEvents.value = generateRandomTimelineEvents();
       }
     });
 
-    map.value.on('mousemove', function (e) {
-      var features = map.value.queryRenderedFeatures(e.point, {
+    map.value?.on('mousemove', function (e) {
+      const features = map.value?.queryRenderedFeatures(e.point, {
         layers: ['3d-buildings']
       });
-      if (features[0]) {
-        hoverBuildingId.value = features[0].id;
+      if (features?.length) {
+        hoverBuildingId.value = Number(features[0].id);
 
         // Create a popup if it doesn't exist
         if (!popup.value) {
@@ -197,6 +201,7 @@ onMounted(() => {
         popup.value
             .setLngLat(e.lngLat)
             .setHTML(`<strong>Building ID:</strong> ${features[0].id}`)
+            // @ts-ignore
             .addTo(map.value);
       } else {
         hoverBuildingId.value = null;

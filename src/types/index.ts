@@ -6,3 +6,13 @@ export interface MapProps {
     bearing: number;
     pitch: number;
 }
+
+export interface Building {
+    id: string;
+    name?: string;
+    type: string;
+    yearBuilt: number;
+    area: number;
+    marketPrice: number;
+    rent: number;
+}
